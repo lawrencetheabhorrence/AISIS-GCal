@@ -1,0 +1,17 @@
+{
+  "manifest_version": 3,
+  "name": "AISIS Google Calendar",
+  "version": "1.0",
+  "description": "Export your enlistment summary to an .ics file",
+  "content_scripts" : [
+    {
+      "js": ["src/app.js"],
+      "matches": [
+        "https://aisis.ateneo.edu/j_aisis/*"
+      ]
+    }
+  ],
+  "permissions": [
+    "downloads"
+  ]
+}

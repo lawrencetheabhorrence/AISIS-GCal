@@ -58,7 +58,7 @@ function pad(n) {
 }
 
 class CourseEvent {
-  constructor(name,loc,days,timeStart,timeEnd,startDateGiven,isDaily) {
+  constructor(name,loc,days,timeStart,timeEnd,startDateGiven) {
     const sd = (!startDateGiven ? closestStartDate(days) : startDateGiven);
     this.name = name;
     this.loc = loc;
@@ -66,7 +66,6 @@ class CourseEvent {
     this.ts = `${sd}T${timeStart}00`;
     this.te = `${sd}T${timeEnd}00`;
     this.until = `${endDate}T000000`;
-    this.freq = (isDaily ? 'DAILY':'WEEKLY');
   }
 
   set timeEnd(te) {
@@ -81,6 +80,11 @@ class CourseEvent {
     days.push(d);
   }
 
+  get freq() {
+    if (days.length >= 5) { return "DAILY"; }
+    return "WEEKLY";
+  }
+
   toString() {
     /* uid generation only works because aisis is on https */
     const now = new Date(Date.now())
@@ -88,14 +92,14 @@ class CourseEvent {
       .split('.')[0]
       .replaceAll('-','')
       .replaceAll(':','');
-    const freq = `RRULE:FREQ=${this.freq};UNTIL=${this.until}`;
+    const fr = `RRULE:FREQ=${this.freq};UNTIL=${this.until}`;
     return ["BEGIN:VEVENT",
             `UID:${self.crypto.randomUUID()}`,
             "SEQUENCE:0",
             `DTSTAMP:${now}`,
             `DTSTART;TZIP=Asia/Manila:${this.ts}`,
             `DTEND;TZIP=Asia/Manila:${this.te}`,
-            freq + (this.freq == 'DAILY' ? '' : `;BYDAY=${this.days.join(',')}`),
+            fr + (this.freq == 'DAILY' ? '' : `;BYDAY=${this.days.join(',')}`),
             `SUMMARY:${this.name}`,
             `LOCATION:${this.loc}`,
             "END:VEVENT"].join('\r\n');
@@ -124,6 +128,7 @@ const cal = new Calendar();
 
 function convertDays(dayString) {
   const days = dayString.split('-');
+  if (dayString == "D") { return weekdaysArr.slice(0,5); }
   return days.map((d) => weekdays[d]);
 }
 
@@ -172,8 +177,7 @@ if (window.location.href=='https://aisis.ateneo.edu/j_aisis/confirmEnlistment.do
       const name = r.children[0].textContent;
       const timeStart = convertTime(intermediate[0].split(' ')[1].split('-')[0]);
       const timeEnd = convertTime(intermediate[0].split(' ')[1].split('-')[1]);
-      const isDaily = (days[0] == 'D');
-      const course = new CourseEvent(name,loc,days,convertTime(timeStart),convertTime(timeEnd),closestStartDateFromStr(intermediate[0].split(' ')[0]),isDaily);
+      const course = new CourseEvent(name,loc,days,convertTime(timeStart),convertTime(timeEnd),closestStartDateFromStr(intermediate[0].split(' ')[0]));
       cal.addCourse(course);
     }
 
@@ -199,7 +203,7 @@ else if (window.location.href=='https://aisis.ateneo.edu/j_aisis/mysched.html') 
           const days = new Set([weekdaysArr[j-1]]);
           const ce = new CourseEvent(innerText.split('\n')[0],
                                     innerText.split(' ')[2],
-                                    days,t[0],t[1],null,false);
+                                    days,t[0],t[1],null);
           courses.push(ce);
         } else {
           const ce = courses.filter((c) => c.name == s)[0];

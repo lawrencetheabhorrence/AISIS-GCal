@@ -8,6 +8,8 @@ const weekdays = {
   'SAT': 'SA'
 };
 
+const weekdaysArr = ['MO','TU','WE','TH','FR','SA'];
+
 /* need to update every sem */
 /* dates are in YYYY-MM-DD */
 const startDate = {
@@ -16,13 +18,12 @@ const startDate = {
   'WE': '20240807',
   'TH': '20240808',
   'FR': '20240809',
-  'SAT': '20240810'
+  'SA': '20240810'
 };
 
 const endDate = '20241128';
 
-function closestStartDate(wdString) {
-  // kind of hacky but idrc
+function closestStartDateFromStr(wdString) {
   switch (wdString) {
     case 'M-TH':
       return startDate['TH'];
@@ -31,10 +32,21 @@ function closestStartDate(wdString) {
     case 'W':
       return startDate['WE'];
     case 'SAT':
-      return startDate['SAT'];
+      return startDate['SA'];
     case 'D':
       return startDate['WE'];
   }
+
+  return startDate['WE'];
+}
+
+function closestStartDate(days) {
+  if (days.has('WE')) { return startDate['WE']; }
+  if (days.has('TH')) { return startDate['TH']; }
+  if (days.has('FR')) { return startDate['FR']; }
+  if (days.has('SA')) { return startDate['SA']; }
+  if (days.has('MO')) { return startDate['MO']; }
+  if (days.has('TU')) { return startDate['TU']; }
 
   return startDate['WE'];
 }
@@ -47,16 +59,30 @@ function pad(n) {
 
 class CourseEvent {
   constructor(name,loc,days,timeStart,timeEnd,startDateGiven,isDaily) {
+    const sd = (!startDateGiven ? closestStartDate(days) : startDateGiven);
     this.name = name;
     this.loc = loc;
     this.days = days;
-    this.timeStart = `${startDateGiven}T${timeStart}00`;
-    this.timeEnd = `${startDateGiven}T${timeEnd}00`;
+    this.ts = `${sd}T${timeStart}00`;
+    this.te = `${sd}T${timeEnd}00`;
     this.until = `${endDate}T000000`;
     this.freq = (isDaily ? 'DAILY':'WEEKLY');
   }
+
+  set timeEnd(te) {
+    this.te = `${startDateGiven}T${te}00`;
+  }
+
+  set timeStart(ts) {
+    this.ts = `${startDateGiven}T${ts}00`;
+  }
+
+  addDay(d) {
+    days.push(d);
+  }
+
   toString() {
-    /* only works because aisis is on https */
+    /* uid generation only works because aisis is on https */
     const now = new Date(Date.now())
       .toISOString()
       .split('.')[0]
@@ -67,8 +93,8 @@ class CourseEvent {
             `UID:${self.crypto.randomUUID()}`,
             "SEQUENCE:0",
             `DTSTAMP:${now}`,
-            `DTSTART;TZIP=Asia/Manila:${this.timeStart}`,
-            `DTEND;TZIP=Asia/Manila:${this.timeEnd}`,
+            `DTSTART;TZIP=Asia/Manila:${this.ts}`,
+            `DTEND;TZIP=Asia/Manila:${this.te}`,
             freq + (this.freq == 'DAILY' ? '' : `;BYDAY=${this.days.join(',')}`),
             `SUMMARY:${this.name}`,
             `LOCATION:${this.loc}`,
@@ -105,9 +131,33 @@ function convertTime(timeString) {
   return timeString;
 }
 
+
+function isEmpty(s) {
+  // checks for empty string
+  // but a whitespace only string
+  // is also empty
+  return (s.trim() == '');
+}
+
+function createCalButton() {
+    const calLink= document.createElement('a');
+    calLink.classList.add("button01");
+
+    calLink.style.textDecoration = 'none';
+    calLink.style.paddingInline = '6px';
+    calLink.style.paddingBlock = '1px';
+    calLink.style.border = '2px solid buttonborder';
+
+    calLink.textContent="Export to Calendar";
+    calLink.setAttribute('href', 'data:text/calendar;charset=utf8,' + encodeURIComponent(cal.toString()));
+    calLink.setAttribute('download','class_schedule.ics');
+
+    return calLink;
+}
+
 // get main content
 
-if (window.location.href=='https://aisis.ateneo.edu/j_aisis/submitEnlistment.do') {
+if (window.location.href=='https://aisis.ateneo.edu/j_aisis/confirmEnlistment.do') {
   const tb = document.querySelector("table[align='center']");
   if (tb) {
     const table = tb.tBodies[0];
@@ -115,24 +165,52 @@ if (window.location.href=='https://aisis.ateneo.edu/j_aisis/submitEnlistment.do'
     for (let i=1;i<table.children.length-1;++i) {
       const r = rows[i]; // tr
       const sched = r.children[4].textContent;
-      if (sched) {
-        const intermediate = sched.split('/');
-        const loc = intermediate[1].slice(0,-14);
-        const days = convertDays(intermediate[0].split(' ')[0]);
-        const name = r.children[0].textContent;
-        const timeStart = convertTime(intermediate[0].split(' ')[1].split('-')[0]);
-        const timeEnd = convertTime(intermediate[0].split(' ')[1].split('-')[1]);
-        const isDaily = (days[0] == 'D');
-        const course = new CourseEvent(name,loc,days,convertTime(timeStart),convertTime(timeEnd),closestStartDate(intermediate[0].split(' ')[0]),isDaily);
-        cal.addCourse(course);
+
+      const intermediate = sched.split('/');
+      const loc = intermediate[1].slice(0,-14);
+      const days = convertDays(intermediate[0].split(' ')[0]);
+      const name = r.children[0].textContent;
+      const timeStart = convertTime(intermediate[0].split(' ')[1].split('-')[0]);
+      const timeEnd = convertTime(intermediate[0].split(' ')[1].split('-')[1]);
+      const isDaily = (days[0] == 'D');
+      const course = new CourseEvent(name,loc,days,convertTime(timeStart),convertTime(timeEnd),closestStartDateFromStr(intermediate[0].split(' ')[0]),isDaily);
+      cal.addCourse(course);
+    }
+
+    const calLink = createCalButton();
+    // insert button
+    table.lastElementChild.firstElementChild.append(calLink);
+  }
+}
+
+else if (window.location.href=='https://aisis.ateneo.edu/j_aisis/mysched.html') {
+  const tb = document.querySelector["table[width='90%']"].tBodies[0];
+  const courseStrings = new Set();
+  const courses = [];
+  if (tb) {
+    const rows = tb.children;
+    for (let i=1;i<rows.length;++i) {
+      const t = rows[i].children[0].split('-');
+      for (let j=1;j<7;++j) {
+        const s = rows[i].children[j].innerText;
+        if (isEmpty(s)) { continue; }
+        if (!courseStrings.has(s)) {
+          courseStrings.add(s);
+          const days = new Set([weekdaysArr[j-1]]);
+          const ce = new CourseEvent(innerText.split('\n')[0],
+                                    innerText.split(' ')[2],
+                                    days,t[0],t[1],null,false);
+          courses.push(ce);
+        } else {
+          const ce = courses.filter((c) => c.name == s)[0];
+          ce.timeEnd = t[1];
+          ce.days.add(weekdaysArr[j-1]);
+        }
       }
     }
 
-    const calLink= document.createElement('a');
-    calLink.textContent="Save to .ics";
-    calLink.setAttribute('href', 'data:text/calendar;charset=utf8,' + encodeURIComponent(cal.toString()));
-    calLink.setAttribute('download','enlistmentsummary.ics');
-
-    tb.insertAdjacentElement('afterend',calLink);
+    for (const ce of courses) {
+      cal.addCourse(ce);
+    }
   }
 }

@@ -10,8 +10,5 @@
         "https://aisis.ateneo.edu/j_aisis/*"
       ]
     }
-  ],
-  "permissions": [
-    "downloads"
   ]
 }

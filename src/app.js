@@ -76,6 +76,12 @@ class CourseEvent {
     this.ts = `${startDateGiven}T${ts}00`;
   }
 
+  static padTime(t) {
+    if (t.length < 4) {
+      return "0".repeat(4-t.length) + t;
+    }
+  }
+
   addDay(d) {
     days.push(d);
   }
@@ -132,15 +138,11 @@ function convertDays(dayString) {
   return days.map((d) => weekdays[d]);
 }
 
-function convertTime(timeString) {
-  return timeString;
-}
-
 
 function isEmpty(s) {
-  // checks for empty string
-  // but a whitespace only string
-  // is also empty
+  /* helper function to check if
+   * string is empty, including
+   * strings with only whitespace */
   return (s.trim() == '');
 }
 
@@ -160,24 +162,22 @@ function createCalButton() {
     return calLink;
 }
 
-// get main content
-
 if (window.location.href=='https://aisis.ateneo.edu/j_aisis/confirmEnlistment.do') {
   const tb = document.querySelector("table[align='center']");
   if (tb) {
     const table = tb.tBodies[0];
     const rows = table.children;
     for (let i=1;i<table.children.length-1;++i) {
-      const r = rows[i]; // tr
+      const r = rows[i];
       const sched = r.children[4].textContent;
 
       const intermediate = sched.split('/');
       const loc = intermediate[1].slice(0,-14);
       const days = convertDays(intermediate[0].split(' ')[0]);
       const name = r.children[0].textContent;
-      const timeStart = convertTime(intermediate[0].split(' ')[1].split('-')[0]);
-      const timeEnd = convertTime(intermediate[0].split(' ')[1].split('-')[1]);
-      const course = new CourseEvent(name,loc,days,convertTime(timeStart),convertTime(timeEnd),closestStartDateFromStr(intermediate[0].split(' ')[0]));
+      const timeStart = intermediate[0].split(' ')[1].split('-')[0];
+      const timeEnd =intermediate[0].split(' ')[1].split('-')[1];
+      const course = new CourseEvent(name,loc,days,timeStart,timeEnd,closestStartDateFromStr(intermediate[0].split(' ')[0]));
       cal.addCourse(course);
     }
 
@@ -186,8 +186,7 @@ if (window.location.href=='https://aisis.ateneo.edu/j_aisis/confirmEnlistment.do
     table.lastElementChild.firstElementChild.append(calLink);
   }
 }
-
-else if (window.location.href=='https://aisis.ateneo.edu/j_aisis/mysched.html') {
+else if (window.location.href=='https://aisis.ateneo.edu/j_aisis/J_VMCS.do') {
   const tb = document.querySelector["table[width='90%']"].tBodies[0];
   const courseStrings = new Set();
   const courses = [];
@@ -216,5 +215,8 @@ else if (window.location.href=='https://aisis.ateneo.edu/j_aisis/mysched.html') 
     for (const ce of courses) {
       cal.addCourse(ce);
     }
+
+    const calLink = createCalButton();
+    tb.insertAdjacentElement('afterend',calLink);
   }
 }

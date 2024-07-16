@@ -1,12 +1,4 @@
 const headerinfo = "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//lawrencetheabhorrence//aisis-gcal//EN";
-const weekdays = {
-  'M': 'MO',
-  'T': 'TU',
-  'W': 'WE',
-  'TH': 'TH',
-  'FR': 'FR',
-  'SAT': 'SA'
-};
 
 const weekdaysArr = ['MO','TU','WE','TH','FR','SA'];
 
@@ -40,16 +32,6 @@ function closestStartDateFromStr(wdString) {
   return startDate['WE'];
 }
 
-function closestStartDate(days) {
-  if (days.has('WE')) { return startDate['WE']; }
-  else if (days.has('TH')) { return startDate['TH']; }
-  else if (days.has('FR')) { return startDate['FR']; }
-  else if (days.has('SA')) { return startDate['SA']; }
-  else if (days.has('MO')) { return startDate['MO']; }
-  else if (days.has('TU')) { return startDate['TU']; }
-  else { return startDate['WE']; }
-}
-
 function pad(n) {
   // helper function with 0-padding
   // up to 2 digits
@@ -57,7 +39,8 @@ function pad(n) {
 }
 
 class CourseEvent {
-  constructor(name,loc,days,timeStart,timeEnd,startDateGiven) {
+  constructor(name,loc,days,timeStart,timeEnd,startDateGiven,isPresentSem) {
+    this.sem = (isPresentSem ? "now" : "next");
     this.sd = (!startDateGiven ? closestStartDate(days) : startDateGiven);
     this.name = name;
     this.loc = loc;
@@ -76,6 +59,16 @@ class CourseEvent {
   addDay(d) {
     this.days.add(d);
     this.sd = closestStartDate(this.days);
+  }
+
+  closestStartDate(days) {
+    if (days.has('WE')) { return startDate['WE']; }
+    else if (days.has('TH')) { return startDate['TH']; }
+    else if (days.has('FR')) { return startDate['FR']; }
+    else if (days.has('SA')) { return startDate['SA']; }
+    else if (days.has('MO')) { return startDate['MO']; }
+    else if (days.has('TU')) { return startDate['TU']; }
+    else { return startDate['WE']; }
   }
 
   toString() {
@@ -119,6 +112,14 @@ class Calendar {
 const cal = new Calendar();
 
 function convertDays(dayString) {
+  const weekdays = {
+    'M': 'MO',
+    'T': 'TU',
+    'W': 'WE',
+    'TH': 'TH',
+    'FR': 'FR',
+    'SAT': 'SA'
+  };
   const days = dayString.split('-');
   if (dayString == "D") { return new Set(weekdaysArr.slice(0,5)); }
   return new Set(days.map((d) => weekdays[d]));

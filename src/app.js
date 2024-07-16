@@ -1,36 +1,28 @@
-const headerinfo = "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//lawrencetheabhorrence//aisis-gcal//EN";
+const startDate = {
+  "now": {
+    'MO': '20240610',
+    'TU': '20240611',
+    'WE': '20240605',
+    'TH': '20240606',
+    'FR': '20240607',
+    'SA': '20240608'
+  },
+  "next": {
+    'MO': '20240812',
+    'TU': '20240813',
+    'WE': '20240807',
+    'TH': '20240808',
+    'FR': '20240809',
+    'SA': '20240810'
+  }
+};
 
+const endDate = {'now': '20240720', 'next': '20241128'};
 const weekdaysArr = ['MO','TU','WE','TH','FR','SA'];
 
 /* need to update every sem */
 /* dates are in YYYY-MM-DD */
-const startDate = {
-  'MO': '20240812',
-  'TU': '20240813',
-  'WE': '20240807',
-  'TH': '20240808',
-  'FR': '20240809',
-  'SA': '20240810'
-};
 
-const endDate = '20241128';
-
-function closestStartDateFromStr(wdString) {
-  switch (wdString) {
-    case 'M-TH':
-      return startDate['TH'];
-    case 'T-F':
-      return startDate['FR'];
-    case 'W':
-      return startDate['WE'];
-    case 'SAT':
-      return startDate['SA'];
-    case 'D':
-      return startDate['WE'];
-  }
-
-  return startDate['WE'];
-}
 
 function pad(n) {
   // helper function with 0-padding
@@ -39,15 +31,15 @@ function pad(n) {
 }
 
 class CourseEvent {
+  #sem; #sd;
   constructor(name,loc,days,timeStart,timeEnd,startDateGiven,isPresentSem) {
-    this.sem = (isPresentSem ? "now" : "next");
-    this.sd = (!startDateGiven ? closestStartDate(days) : startDateGiven);
+    this.#sem = (isPresentSem ? "now" : "next");
+    this.#sd = (!startDateGiven ? closestStartDate(days) : startDateGiven);
     this.name = name;
     this.loc = loc;
     this.days = days;
     this.timeStart = timeStart;
     this.timeEnd = timeEnd;
-    this.until = `${endDate}T000000`;
   }
 
   static padTime(t) {
@@ -58,10 +50,10 @@ class CourseEvent {
 
   addDay(d) {
     this.days.add(d);
-    this.sd = closestStartDate(this.days);
+    this.sd = this.#closestStartDate(this.days);
   }
 
-  closestStartDate(days) {
+  #closestStartDate(days) {
     if (days.has('WE')) { return startDate['WE']; }
     else if (days.has('TH')) { return startDate['TH']; }
     else if (days.has('FR')) { return startDate['FR']; }
@@ -71,6 +63,22 @@ class CourseEvent {
     else { return startDate['WE']; }
   }
 
+  static closestStartDateFromStr(wdString) {
+    switch (wdString) {
+      case 'M-TH':
+        return startDate['TH'];
+      case 'T-F':
+        return startDate['FR'];
+      case 'W':
+        return startDate['WE'];
+      case 'SAT':
+        return startDate['SA'];
+      case 'D':
+        return startDate['WE'];
+    }
+    return startDate['WE'];
+  }
+
   toString() {
     /* uid generation only works because aisis is on https */
     const now = new Date(Date.now())
@@ -78,13 +86,14 @@ class CourseEvent {
       .split('.')[0]
       .replaceAll('-','')
       .replaceAll(':','');
+    const until = `${endDate[this.#sem]}T000000`;
     return ["BEGIN:VEVENT",
             `UID:${self.crypto.randomUUID()}`,
             "SEQUENCE:0",
             `DTSTAMP:${now}`,
-            `DTSTART;TZIP=Asia/Manila:${this.sd}T${this.timeStart}00`,
-            `DTEND;TZIP=Asia/Manila:${this.sd}T${this.timeEnd}00`,
-            `RRULE:FREQ=WEEKLY;UNTIL=${this.until};BYDAY=${Array.from(this.days).join(',')}`,
+            `DTSTART;TZIP=Asia/Manila:${this.#sd}T${this.timeStart}00`,
+            `DTEND;TZIP=Asia/Manila:${this.#sd}T${this.timeEnd}00`,
+            `RRULE:FREQ=WEEKLY;UNTIL=${until};BYDAY=${Array.from(this.days).join(',')}`,
             `SUMMARY:${this.name}`,
             `LOCATION:${this.loc}`,
             "END:VEVENT"].join('\r\n');
@@ -92,15 +101,17 @@ class CourseEvent {
 }
 
 class Calendar {
+  #events;
   constructor() {
-    this.events = [];
+    this.#events = [];
   }
   addCourse(ce) {
-    this.events.push(ce);
+    this.#events.push(ce);
   }
   toString() {
+    const headerinfo = "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//lawrencetheabhorrence//aisis-gcal//EN";
     let cal = headerinfo;
-    for (const c of this.events) {
+    for (const c of this.#events) {
       cal += '\r\n' + c.toString();
     }
 

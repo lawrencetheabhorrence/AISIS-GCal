@@ -42,13 +42,12 @@ function closestStartDateFromStr(wdString) {
 
 function closestStartDate(days) {
   if (days.has('WE')) { return startDate['WE']; }
-  if (days.has('TH')) { return startDate['TH']; }
-  if (days.has('FR')) { return startDate['FR']; }
-  if (days.has('SA')) { return startDate['SA']; }
-  if (days.has('MO')) { return startDate['MO']; }
-  if (days.has('TU')) { return startDate['TU']; }
-
-  return startDate['WE'];
+  else if (days.has('TH')) { return startDate['TH']; }
+  else if (days.has('FR')) { return startDate['FR']; }
+  else if (days.has('SA')) { return startDate['SA']; }
+  else if (days.has('MO')) { return startDate['MO']; }
+  else if (days.has('TU')) { return startDate['TU']; }
+  else { return startDate['WE']; }
 }
 
 function pad(n) {
@@ -59,21 +58,13 @@ function pad(n) {
 
 class CourseEvent {
   constructor(name,loc,days,timeStart,timeEnd,startDateGiven) {
-    const sd = (!startDateGiven ? closestStartDate(days) : startDateGiven);
+    this.sd = (!startDateGiven ? closestStartDate(days) : startDateGiven);
     this.name = name;
     this.loc = loc;
     this.days = days;
-    this.ts = `${sd}T${timeStart}00`;
-    this.te = `${sd}T${timeEnd}00`;
+    this.timeStart = timeStart;
+    this.timeEnd = timeEnd;
     this.until = `${endDate}T000000`;
-  }
-
-  set timeEnd(te) {
-    this.te = `${startDateGiven}T${te}00`;
-  }
-
-  set timeStart(ts) {
-    this.ts = `${startDateGiven}T${ts}00`;
   }
 
   static padTime(t) {
@@ -83,12 +74,8 @@ class CourseEvent {
   }
 
   addDay(d) {
-    days.push(d);
-  }
-
-  get freq() {
-    if (days.length >= 5) { return "DAILY"; }
-    return "WEEKLY";
+    this.days.add(d);
+    this.sd = closestStartDate(this.days);
   }
 
   toString() {
@@ -98,14 +85,13 @@ class CourseEvent {
       .split('.')[0]
       .replaceAll('-','')
       .replaceAll(':','');
-    const fr = `RRULE:FREQ=${this.freq};UNTIL=${this.until}`;
     return ["BEGIN:VEVENT",
             `UID:${self.crypto.randomUUID()}`,
             "SEQUENCE:0",
             `DTSTAMP:${now}`,
-            `DTSTART;TZIP=Asia/Manila:${this.ts}`,
-            `DTEND;TZIP=Asia/Manila:${this.te}`,
-            fr + (this.freq == 'DAILY' ? '' : `;BYDAY=${this.days.join(',')}`),
+            `DTSTART;TZIP=Asia/Manila:${this.sd}T${this.timeStart}00`,
+            `DTEND;TZIP=Asia/Manila:${this.sd}T${this.timeEnd}00`,
+            `RRULE:FREQ=WEEKLY;UNTIL=${this.until};BYDAY=${Array.from(this.days).join(',')}`,
             `SUMMARY:${this.name}`,
             `LOCATION:${this.loc}`,
             "END:VEVENT"].join('\r\n');
@@ -134,8 +120,8 @@ const cal = new Calendar();
 
 function convertDays(dayString) {
   const days = dayString.split('-');
-  if (dayString == "D") { return weekdaysArr.slice(0,5); }
-  return days.map((d) => weekdays[d]);
+  if (dayString == "D") { return new Set(weekdaysArr.slice(0,5)); }
+  return new Set(days.map((d) => weekdays[d]));
 }
 
 
@@ -187,27 +173,29 @@ if (window.location.href=='https://aisis.ateneo.edu/j_aisis/confirmEnlistment.do
   }
 }
 else if (window.location.href=='https://aisis.ateneo.edu/j_aisis/J_VMCS.do') {
-  const tb = document.querySelector["table[width='90%']"].tBodies[0];
-  const courseStrings = new Set();
-  const courses = [];
-  if (tb) {
+  const table = document.querySelector("table[width='90%']");
+  if (table) {
+    const tb = table.tBodies[0];
+    const courseStrings = new Set();
+    const courses = [];
     const rows = tb.children;
     for (let i=1;i<rows.length;++i) {
-      const t = rows[i].children[0].split('-');
+      const t = rows[i].children[0].textContent.split('-');
       for (let j=1;j<7;++j) {
         const s = rows[i].children[j].innerText;
         if (isEmpty(s)) { continue; }
         if (!courseStrings.has(s)) {
           courseStrings.add(s);
           const days = new Set([weekdaysArr[j-1]]);
-          const ce = new CourseEvent(innerText.split('\n')[0],
-                                    innerText.split(' ')[2],
+          const lines = s.split('\n');
+          const ce = new CourseEvent(lines[0],
+                                    lines[1].slice(lines[1].indexOf(' ')+1,-14),
                                     days,t[0],t[1],null);
           courses.push(ce);
         } else {
-          const ce = courses.filter((c) => c.name == s)[0];
+          const ce = courses.filter((c) => c.name == s.split('\n')[0])[0];
           ce.timeEnd = t[1];
-          ce.days.add(weekdaysArr[j-1]);
+          ce.addDay(weekdaysArr[j-1]);
         }
       }
     }
@@ -217,6 +205,6 @@ else if (window.location.href=='https://aisis.ateneo.edu/j_aisis/J_VMCS.do') {
     }
 
     const calLink = createCalButton();
-    tb.insertAdjacentElement('afterend',calLink);
+    table.insertAdjacentElement('afterend',calLink);
   }
 }

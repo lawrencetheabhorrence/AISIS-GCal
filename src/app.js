@@ -34,16 +34,17 @@ class CourseEvent {
     this.name = name;
     this.loc = loc;
     this.days = days;
-    this.timeStart = timeStart;
-    this.timeEnd = timeEnd;
+    this.timeStart = this.#padTime(timeStart);
+    this.timeEnd = this.#padTime(timeEnd);
     this.#sem = (isPresentSem ? "now" : "next");
     this.#sd = (!startDateGiven ? this.#closestStartDate() : this.#closestStartDateFromStr(startDateGiven));
   }
 
-  static padTime(t) {
+  #padTime(t) {
     if (t.length < 4) {
       return "0".repeat(4-t.length) + t;
     }
+    return t;
   }
 
   addDay(d) {
@@ -187,9 +188,40 @@ else if (window.location.href=='https://aisis.ateneo.edu/j_aisis/J_VMCS.do') {
   const table = document.querySelector("table[width='90%']");
   if (table) {
     const tb = table.tBodies[0];
-    const courseStrings = new Set();
-    const courses = [];
     const rows = tb.children;
+    const courses = [];
+    let lastCourse;
+
+    /* navigates the schedule per column,
+     * thus a subject/course is represented
+     * by multiple events that repeat once a week.
+     */
+    for (let i=1;i<7;++i) {
+      for(let j=1;j<rows.length;++j) {
+        const t = rows[j].children[0].textContent.split('-');
+        const s = rows[j].children[i].innerText;
+
+        if (isEmpty(s)) { lastCourse=s; continue; }
+        if (!lastCourse || s != lastCourse) {
+          const days = new Set([weekdaysArr[i-1]]);
+          const lines = s.split('\n');
+          const ce = new CourseEvent(lines[0],
+            lines[1].slice(lines[1].indexOf(' ')+1,-14),
+            days,t[0],t[1],null,true);
+          courses.push(ce);
+          lastCourse = s;
+        } else {
+          const c = courses[courses.length-1];
+          c.timeEnd = t[1];
+        }
+      }
+    }
+
+    /* navigates the schedule per row, produces less events
+     * but gaps in subjects are not implemented yet hree
+     */
+    /*
+    const courseStrings = new Set();
     for (let i=1;i<rows.length;++i) {
       const t = rows[i].children[0].textContent.split('-');
       for (let j=1;j<7;++j) {
@@ -210,6 +242,7 @@ else if (window.location.href=='https://aisis.ateneo.edu/j_aisis/J_VMCS.do') {
         }
       }
     }
+    */
 
     for (const ce of courses) {
       cal.addCourse(ce);

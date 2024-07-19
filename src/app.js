@@ -216,34 +216,7 @@ else if (window.location.href=='https://aisis.ateneo.edu/j_aisis/J_VMCS.do') {
         }
       }
     }
-
-    /* navigates the schedule per row, produces less events
-     * but gaps in subjects are not implemented yet hree
-     */
-    /*
-    const courseStrings = new Set();
-    for (let i=1;i<rows.length;++i) {
-      const t = rows[i].children[0].textContent.split('-');
-      for (let j=1;j<7;++j) {
-        const s = rows[i].children[j].innerText;
-        if (isEmpty(s)) { continue; }
-        if (!courseStrings.has(s)) {
-          courseStrings.add(s);
-          const days = new Set([weekdaysArr[j-1]]);
-          const lines = s.split('\n');
-          const ce = new CourseEvent(lines[0],
-                                    lines[1].slice(lines[1].indexOf(' ')+1,-14),
-                                    days,t[0],t[1],null,true);
-          courses.push(ce);
-        } else {
-          const ce = courses.filter((c) => c.name == s.split('\n')[0])[0];
-          ce.timeEnd = t[1];
-          ce.addDay(weekdaysArr[j-1]);
-        }
-      }
-    }
-    */
-
+    
     for (const ce of courses) {
       cal.addCourse(ce);
     }

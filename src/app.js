@@ -36,6 +36,7 @@ class CourseEvent {
     this.days = days;
     this.timeStart = this.#padTime(timeStart);
     this.timeEnd = this.#padTime(timeEnd);
+    this.isPresentSem = isPresentSem;
     this.#sem = (isPresentSem ? "now" : "next");
     this.#sd = (!startDateGiven ? this.#closestStartDate() : this.#closestStartDateFromStr(startDateGiven));
   }
@@ -45,6 +46,10 @@ class CourseEvent {
       return "0".repeat(4-t.length) + t;
     }
     return t;
+  }
+
+  get startDate() {
+    return this.#sd;
   }
 
   addDay(d) {
@@ -143,6 +148,37 @@ function isEmpty(s) {
   return (s.trim() == '');
 }
 
+function mergeCourses(courseEvents) {
+  /** assumes all events have same name,
+   * loc, start and end time.
+   */
+
+  let days = new Set();
+  for(const ce of courseEvents) {
+    days = days.union(ce.days);
+  }
+
+  const c = courseEvents[0];
+
+  return new CourseEvent(c.name,c.loc,days,c.timeStart,c.timeEnd,c.startDate,c.isPresentSem);
+}
+
+function simplifySchedule(courses) {
+  let newCourses = [];
+  const courseNames = new Set(courses.map((c) => c.name));
+  console.log("course names:",courseNames);
+  for (const n of courseNames) {
+    const filteredCourses = courses.filter((c) => c.name == n);
+    const times = new Set(filteredCourses.map((c) => `${c.timeStart}-${c.timeEnd}`));
+    console.log("times:",times);
+    for (const t of times) {
+      const [timeStart,timeEnd] = t.split('-');
+      newCourses.push(mergeCourses(filteredCourses.filter((c) => (c.timeStart == timeStart) && (c.timeEnd == timeEnd))));
+    }
+  }
+  return newCourses;
+}
+
 function createCalButton() {
     const calLink= document.createElement('a');
     calLink.classList.add("button01");
@@ -189,7 +225,7 @@ else if (window.location.href=='https://aisis.ateneo.edu/j_aisis/J_VMCS.do') {
   if (table) {
     const tb = table.tBodies[0];
     const rows = tb.children;
-    const courses = [];
+    let courses = [];
     let lastCourse;
 
     /* navigates the schedule per column,
@@ -216,6 +252,8 @@ else if (window.location.href=='https://aisis.ateneo.edu/j_aisis/J_VMCS.do') {
         }
       }
     }
+
+    courses = simplifySchedule(courses);
     
     for (const ce of courses) {
       cal.addCourse(ce);

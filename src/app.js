@@ -22,12 +22,6 @@ const startDate = {
 const endDate = {'now': '20240720', 'next': '20241128'};
 const weekdaysArr = ['MO','TU','WE','TH','FR','SA'];
 
-function pad(n) {
-  // helper function with 0-padding
-  // up to 2 digits
-  return (n > 9 ? `${n}` : `0${n}`);
-}
-
 class CourseEvent {
   #sem; #sd;
   constructor(name,loc,days,timeStart,timeEnd,startDateGiven,isPresentSem) {
@@ -149,8 +143,11 @@ function isEmpty(s) {
 }
 
 function mergeCourses(courseEvents) {
-  /** assumes all events have same name,
-   * loc, start and end time.
+  /** events with the same course
+   * and same start and end time
+   * will now be merged into one event
+   * that repeats on multiple days of the
+   * week
    */
 
   let days = new Set();
@@ -166,11 +163,9 @@ function mergeCourses(courseEvents) {
 function simplifySchedule(courses) {
   let newCourses = [];
   const courseNames = new Set(courses.map((c) => c.name));
-  console.log("course names:",courseNames);
   for (const n of courseNames) {
     const filteredCourses = courses.filter((c) => c.name == n);
     const times = new Set(filteredCourses.map((c) => `${c.timeStart}-${c.timeEnd}`));
-    console.log("times:",times);
     for (const t of times) {
       const [timeStart,timeEnd] = t.split('-');
       newCourses.push(mergeCourses(filteredCourses.filter((c) => (c.timeStart == timeStart) && (c.timeEnd == timeEnd))));
@@ -253,6 +248,11 @@ else if (window.location.href=='https://aisis.ateneo.edu/j_aisis/J_VMCS.do') {
       }
     }
 
+    /* process the schedule again so that
+     * events that repeat on multiple days of
+     * the week are merged into one repeating
+     * event
+     */
     courses = simplifySchedule(courses);
     
     for (const ce of courses) {

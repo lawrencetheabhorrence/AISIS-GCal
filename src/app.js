@@ -1,7 +1,7 @@
 /* need to update every sem */
 /* dates are in YYYY-MM-DD */
 const startDate = {
-  "now": {
+  "2024-0": {
     'MO': '20240610',
     'TU': '20240611',
     'WE': '20240605',
@@ -9,7 +9,7 @@ const startDate = {
     'FR': '20240607',
     'SA': '20240608'
   },
-  "next": {
+  "2024-1": {
     'MO': '20240812',
     'TU': '20240813',
     'WE': '20240807',
@@ -19,19 +19,20 @@ const startDate = {
   }
 };
 
-const endDate = {'now': '20240720', 'next': '20241128'};
+const endDate = {'2024-0': '20240720', '2024-1': '20241128'};
+const next = "2024-2";
+const now = "2024-1";
 const weekdaysArr = ['MO','TU','WE','TH','FR','SA'];
 
 class CourseEvent {
-  #sem; #sd;
-  constructor(name,loc,days,timeStart,timeEnd,startDateGiven,isPresentSem) {
+  #sd;
+  constructor(name,loc,days,timeStart,timeEnd,startDateGiven,sem) {
     this.name = name;
     this.loc = loc;
     this.days = days;
     this.timeStart = this.#padTime(timeStart);
     this.timeEnd = this.#padTime(timeEnd);
-    this.isPresentSem = isPresentSem;
-    this.#sem = (isPresentSem ? "now" : "next");
+    this.sem = sem;
     this.#sd = (!startDateGiven ? this.#closestStartDate() : this.#closestStartDateFromStr(startDateGiven));
   }
 
@@ -52,29 +53,29 @@ class CourseEvent {
   }
 
   #closestStartDate() {
-    if (this.days.has('WE')) { return startDate[this.#sem]['WE']; }
-    else if (this.days.has('TH')) { return startDate[this.#sem]['TH']; }
-    else if (this.days.has('FR')) { return startDate[this.#sem]['FR']; }
-    else if (this.days.has('SA')) { return startDate[this.#sem]['SA']; }
-    else if (this.days.has('MO')) { return startDate[this.#sem]['MO']; }
-    else if (this.days.has('TU')) { return startDate[this.#sem]['TU']; }
-    else { return startDate[this.#sem]['WE']; }
+    if (this.days.has('WE')) { return startDate[this.sem]['WE']; }
+    else if (this.days.has('TH')) { return startDate[this.sem]['TH']; }
+    else if (this.days.has('FR')) { return startDate[this.sem]['FR']; }
+    else if (this.days.has('SA')) { return startDate[this.sem]['SA']; }
+    else if (this.days.has('MO')) { return startDate[this.sem]['MO']; }
+    else if (this.days.has('TU')) { return startDate[this.sem]['TU']; }
+    else { return startDate[this.sem]['WE']; }
   }
 
   #closestStartDateFromStr(wdString) {
     switch (wdString) {
       case 'M-TH':
-        return startDate[this.#sem]['TH'];
+        return startDate[this.sem]['TH'];
       case 'T-F':
-        return startDate[this.#sem]['FR'];
+        return startDate[this.sem]['FR'];
       case 'W':
-        return startDate[this.#sem]['WE'];
+        return startDate[this.sem]['WE'];
       case 'SAT':
-        return startDate[this.#sem]['SA'];
+        return startDate[this.sem]['SA'];
       case 'D':
-        return startDate[this.#sem]['WE'];
+        return startDate[this.sem]['WE'];
     }
-    return startDate[this.#sem]['WE'];
+    return startDate[this.sem]['WE'];
   }
 
   toString() {
@@ -84,7 +85,7 @@ class CourseEvent {
       .split('.')[0]
       .replaceAll('-','')
       .replaceAll(':','');
-    const until = `${endDate[this.#sem]}T000000`;
+    const until = `${endDate[this.sem]}T000000`;
     return ["BEGIN:VEVENT",
             `UID:${self.crypto.randomUUID()}`,
             "SEQUENCE:0",
@@ -157,7 +158,7 @@ function mergeCourses(courseEvents) {
 
   const c = courseEvents[0];
 
-  return new CourseEvent(c.name,c.loc,days,c.timeStart,c.timeEnd,c.startDate,c.isPresentSem);
+  return new CourseEvent(c.name,c.loc,days,c.timeStart,c.timeEnd,c.startDate,c.sem);
 }
 
 function simplifySchedule(courses) {
@@ -206,7 +207,7 @@ if (window.location.href=='https://aisis.ateneo.edu/j_aisis/confirmEnlistment.do
       const timeStart = intermediate[0].split(' ')[1].split('-')[0];
       const timeEnd =intermediate[0].split(' ')[1].split('-')[1];
       const startDateGiven = intermediate[0].split(' ')[0];
-      const course = new CourseEvent(name,loc,days,timeStart,timeEnd,startDateGiven,false);
+      const course = new CourseEvent(name,loc,days,timeStart,timeEnd,startDateGiven,next);
       cal.addCourse(course);
     }
 
@@ -217,7 +218,8 @@ if (window.location.href=='https://aisis.ateneo.edu/j_aisis/confirmEnlistment.do
 }
 else if (window.location.href=='https://aisis.ateneo.edu/j_aisis/J_VMCS.do') {
   const table = document.querySelector("table[width='90%']");
-  if (table) {
+  const semVal = document.getElementsByTagName("select")[0].selectedOptions[0].value;
+  if (table && semVal && startDate[semVal]) {
     const tb = table.tBodies[0];
     const rows = tb.children;
     let courses = [];
@@ -238,7 +240,7 @@ else if (window.location.href=='https://aisis.ateneo.edu/j_aisis/J_VMCS.do') {
           const lines = s.split('\n');
           const ce = new CourseEvent(lines[0],
             lines[1].slice(lines[1].indexOf(' ')+1,-14),
-            days,t[0],t[1],null,true);
+            days,t[0],t[1],null,semVal);
           courses.push(ce);
           lastCourse = s;
         } else {

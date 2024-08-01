@@ -28,8 +28,8 @@ const startDate = {
 };
 
 const endDate = {'2024-0': '20240720', '2024-1': '20241128', '2024-2': '20240424' };
-const next = "2024-2";
-const now = "2024-1";
+const nextSem = "2024-2";
+const nowSem = "2024-1";
 const weekdaysArr = ['MO','TU','WE','TH','FR','SA'];
 
 class CourseEvent {
@@ -215,7 +215,7 @@ if (window.location.href=='https://aisis.ateneo.edu/j_aisis/confirmEnlistment.do
       const timeStart = intermediate[0].split(' ')[1].split('-')[0];
       const timeEnd =intermediate[0].split(' ')[1].split('-')[1];
       const startDateGiven = intermediate[0].split(' ')[0];
-      const course = new CourseEvent(name,loc,days,timeStart,timeEnd,startDateGiven,next);
+      const course = new CourseEvent(name,loc,days,timeStart,timeEnd,startDateGiven,nextSem);
       cal.addCourse(course);
     }
 
@@ -227,7 +227,7 @@ if (window.location.href=='https://aisis.ateneo.edu/j_aisis/confirmEnlistment.do
 else if (window.location.href=='https://aisis.ateneo.edu/j_aisis/J_VMCS.do') {
   const table = document.querySelector("table[width='90%']");
   const semVal = document.getElementsByTagName("select")[0].selectedOptions[0].value;
-  if (table && semVal && startDate[semVal]) {
+  if (table && semVal && startDate[semVal] && endDate[semVal]) {
     const tb = table.tBodies[0];
     const rows = tb.children;
     let courses = [];
